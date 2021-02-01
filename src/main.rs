@@ -1,77 +1,62 @@
 
 
-use std::{collections::HashMap};
-use std::io::{stdin, stdout, Write};
+use std::collections::HashMap;
+use std::io::{self, Write, Read, stdin, stdout};
 
-
-fn read(input: &mut String) {
-    stdout().flush()
-        .expect("failed to flush");
-    stdin().read_line(input)
-        .expect("failed to read");
-}
-
-fn show_help(bad_command: &str) {
+fn help(bad_command: &str) {
     println!("Did not understand your command! Got : `{}`.", bad_command);
-    println!("Use either `get <k>`, `set <k> <v>` or `del <k>`, `exit` to stop the program");
+    println!("Use either `get <k>`, `set <k> <v>` or `del <k>`");
+    println!("Type `exit` to stop the program");
 }
 
-struct Database {
-    data: HashMap<String, String>,
+struct ParserRes<'a> {
+    str: String,
+    action: &'a str,
+    key: &'a str,
+    value: &'a str,
 }
 
-impl Database {
-    fn new() -> Self {
-        Database{
-            data : HashMap::new(),
-        }
-    }
+fn parser<'a>(arguments: &'a String) -> ParserRes<'a> {
+    let mut args = arguments.clone().split(" ");
+    let maybe_action = args.next();
+    let maybe_key = args.next();
+    let maybe_value = args.next();
 
-    fn set(&mut self, key: String, value:String) {
-        &self.data.insert(key, value);
-    }
+    let action: &'a str = maybe_action.unwrap_or("");
+    let key: &'a str  = maybe_key.unwrap_or("");
+    let value: &'a str  = maybe_value.unwrap_or("");
 
-    fn get(&mut self, key: String) -> Option<&String>{
-        self.data.get(&key)
-    }
-}
-
-fn execute(command: String, db : &mut Database) -> bool {
-    match command.split(" ").nth(0).expect("did not find first argument") {
-        "get" => {
-            // get the key that comes after get
-            let maybe_key = command.split(" ").nth(1);
-            // check if the key is specified
-            match maybe_key {
-                // if a key is specified we use it to query the db
-                Some(key) => {
-                    // if the db finds a value it prints it to stdout
-                    if let Some(value) =  db.get(key.to_string()) {
-                        println!("{}", value);
-                    } else {
-                        // otherwise stdout key not found 
-                        println!("key : `{}` not found", key);
-                    }
-                },
-                _ => println!("specify the key when using get") // remind `get` usage 
-            }
-            false
-        },
-        "exit" => true,
-        _ => {
-            show_help(&command);
-            false
-        },
+    ParserRes{
+        str : *arguments,
+        action :action,
+        key : key,
+        value: value
     }
 }
 
 fn main() {
-    let mut db = Database::new();
+    let mut db: HashMap<&str, &str> = HashMap::new();
+    let mut cin = io::stdin();
     loop {
-        let mut cmd = String::new();
-        read(&mut cmd); // write to 
-        cmd = cmd.as_str().trim().to_string(); // trim command
-        let stop  = execute(cmd, &mut db);
-        if stop { break; };
+        let mut input = "".to_string();
+        cin.read_to_string(&mut input).unwrap().to_string(); // write to cmd string 
+        let args= parser(&input);
+        match args.action {
+            "set" => {
+                match args.key {
+                    "" => println!("provide a key and value to set"),
+                    _ => (),
+                }
+                db.insert(args.key, args.value);
+            },
+            "get" => {
+                let value = db.get(args.key);
+                match value {
+                    Some(value) => println!("> {}", value),
+                    _ => println!("> None")
+                };
+            }
+            _ => ()
+        }
     }
 }
